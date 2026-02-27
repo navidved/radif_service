@@ -1,0 +1,15 @@
+---
+description: HTTP handler and API response conventions for radif_service
+alwaysApply: true
+---
+# API Conventions
+
+- All handlers have signature `(w http.ResponseWriter, r *http.Request)`. No framework-specific types.
+- Always respond with JSON. Use the shared helpers in `internal/response/`.
+- Success shape: `{ "success": true, "data": { ... } }`
+- Error shape:  `{ "success": false, "error": "message" }`
+- Never expose internal error details or stack traces in production (`APP_ENV=production` check).
+- Validate all request inputs at the handler level before passing to service.
+- JWT middleware sets `userID` and `userPhone` in context. Handlers read from context — never from query params or body.
+- All routes are under `/api/v1/`. Protected routes use the `RequireAuth` middleware.
+- OTP codes must NEVER be logged when `APP_ENV=production`.

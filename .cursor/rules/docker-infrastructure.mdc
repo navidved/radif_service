@@ -1,0 +1,12 @@
+---
+description: Docker and local dev infrastructure rules for radif_service
+alwaysApply: true
+---
+# Infrastructure Rules
+
+- Multi-stage Dockerfile: `golang:1.23-alpine` builder → `alpine:3.20` runner. Final image must NOT contain the Go toolchain.
+- Run DB migrations automatically at container startup before binding the HTTP port.
+- Environment variables only via `.env` (local) or Docker Compose `environment:` block. No hardcoded secrets.
+- Services communicate by Docker Compose service names (e.g. `postgres`, not `localhost`).
+- `postgres` service requires a healthcheck. `api` service must use `depends_on: postgres: condition: service_healthy`.
+- `NEXT_PUBLIC_API_URL` in the web service must point to `http://localhost:8080` (browser-facing), not `http://api:8080`.

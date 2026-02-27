@@ -1,0 +1,281 @@
+basePath: /api/v1
+definitions:
+  auth.otpSuccessData:
+    properties:
+      success:
+        example: true
+        type: boolean
+    type: object
+  auth.registerData:
+    properties:
+      token:
+        example: eyJhbGci...
+        type: string
+      user:
+        $ref: '#/definitions/auth.userBody'
+    type: object
+  auth.registerRequest:
+    properties:
+      accountType:
+        example: personal
+        type: string
+      phone:
+        example: "09121234567"
+        type: string
+    type: object
+  auth.sendOTPRequest:
+    properties:
+      phone:
+        example: "09121234567"
+        type: string
+    type: object
+  auth.userBody:
+    properties:
+      accountType:
+        example: personal
+        type: string
+      createdAt:
+        example: "2026-02-27T14:48:34Z"
+        type: string
+      id:
+        example: e7eedc79-0707-4fe4-8734-526b7ef13a7b
+        type: string
+      phone:
+        example: "09121234567"
+        type: string
+      updatedAt:
+        example: "2026-02-27T14:48:34Z"
+        type: string
+    type: object
+  auth.verifyOTPData:
+    properties:
+      isNewUser:
+        example: true
+        type: boolean
+      token:
+        example: eyJhbGci...
+        type: string
+    type: object
+  auth.verifyOTPRequest:
+    properties:
+      code:
+        example: "12345"
+        type: string
+      phone:
+        example: "09121234567"
+        type: string
+    type: object
+  response.Envelope:
+    properties:
+      data: {}
+      error:
+        type: string
+      success:
+        type: boolean
+    type: object
+  user.User:
+    properties:
+      accountType:
+        type: string
+      createdAt:
+        type: string
+      fullName:
+        type: string
+      id:
+        type: string
+      phone:
+        type: string
+      updatedAt:
+        type: string
+    type: object
+host: localhost:8080
+info:
+  contact: {}
+  description: Backend for Radif — social payment platform for Iran.
+  title: Radif API
+  version: "1.0"
+paths:
+  /auth/otp/resend:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate the current OTP and issue a new one with a fresh 2-minute
+        TTL.
+      parameters:
+      - description: Phone number
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.sendOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.otpSuccessData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      summary: Resend OTP
+      tags:
+      - auth
+  /auth/otp/send:
+    post:
+      consumes:
+      - application/json
+      description: Generate and send a 5-digit OTP to the given Iranian mobile number.
+        In development the code is printed to server logs.
+      parameters:
+      - description: Phone number
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.sendOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.otpSuccessData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      summary: Send OTP
+      tags:
+      - auth
+  /auth/otp/verify:
+    post:
+      consumes:
+      - application/json
+      description: Validate the OTP code. Returns isNewUser=true for first-time users
+        (no token yet). Returns a JWT token for existing users immediately.
+      parameters:
+      - description: Phone and OTP code
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.verifyOTPRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.verifyOTPData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      summary: Verify OTP
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: 'Create a new user account with the specified account type. Issues
+        a JWT token on success. Idempotent: calling again with the same phone returns
+        a fresh token.'
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.registerRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.registerData'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      summary: Register new user
+      tags:
+      - auth
+  /users/me:
+    get:
+      description: Returns the profile of the currently authenticated user.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Envelope'
+            - properties:
+                data:
+                  $ref: '#/definitions/user.User'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Envelope'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/response.Envelope'
+      security:
+      - BearerAuth: []
+      summary: Get current user
+      tags:
+      - users
+securityDefinitions:
+  BearerAuth:
+    description: 'JWT Bearer token. Format: **Bearer {token}**'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

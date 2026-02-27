@@ -1,0 +1,14 @@
+---
+description: Database access rules using pgx/v5 and golang-migrate
+alwaysApply: true
+---
+# Database Rules
+
+- Use `pgx/v5` with `pgxpool` for all database access. Share a single pool across the process.
+- All SQL is written directly in repository methods (no ORM). Keep queries simple and readable.
+- Use `pgx.ErrNoRows` to detect not-found; wrap it as `ErrNotFound` in the repository layer.
+- Migrations live in `internal/db/migrations/` as numbered up/down pairs (e.g. `001_name.up.sql`).
+- Never modify an existing migration file. Always create a new numbered migration.
+- Migrations are embedded with `//go:embed migrations` and run at startup via golang-migrate.
+- Always use transactions (`pgxpool.Pool.Begin`) for multi-step writes.
+- Prefer `$1, $2` positional params. Never use `fmt.Sprintf` to build SQL strings.

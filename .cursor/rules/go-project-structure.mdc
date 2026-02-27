@@ -1,0 +1,13 @@
+---
+description: Go project layout and package conventions for radif_service
+alwaysApply: true
+---
+# Go Project Structure
+
+- Follow standard Go layout: `cmd/` for binaries, `internal/` for private packages.
+- Layered architecture: `handler` → `service` → `repository` → `db`. Each layer imports only the layer directly below it.
+- Interfaces are defined where they are USED, not where they are implemented.
+- All exported types and functions must have a Go doc comment.
+- Keep `main.go` thin: wire dependencies, start server, handle OS signals for graceful shutdown.
+- No `init()` functions except in blank-import driver packages.
+- No global mutable state; pass dependencies via constructor injection (NewX(deps) pattern).
