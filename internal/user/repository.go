@@ -137,6 +137,18 @@ func (r *Repository) UpdateProfile(ctx context.Context, id string, p UpdateProfi
 	return u, nil
 }
 
+// UsernameExists returns true when the username is already taken by any user.
+func (r *Repository) UsernameExists(ctx context.Context, username string) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)`, username,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("check username exists: %w", err)
+	}
+	return exists, nil
+}
+
 // UpdateAvatarKey saves a new avatar object key for the user and returns the updated record.
 func (r *Repository) UpdateAvatarKey(ctx context.Context, id, key string) (*User, error) {
 	u := &User{}

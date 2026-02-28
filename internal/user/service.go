@@ -44,6 +44,15 @@ func (s *Service) UpdateProfile(ctx context.Context, id string, p UpdateProfileP
 	return u, nil
 }
 
+// UsernameAvailable returns true when the username is not yet taken.
+func (s *Service) UsernameAvailable(ctx context.Context, username string) (bool, error) {
+	exists, err := s.repo.UsernameExists(ctx, username)
+	if err != nil {
+		return false, err
+	}
+	return !exists, nil
+}
+
 // UpdateAvatarKey saves a new avatar object storage key for the user.
 func (s *Service) UpdateAvatarKey(ctx context.Context, id, key string) (*User, error) {
 	u, err := s.repo.UpdateAvatarKey(ctx, id, key)

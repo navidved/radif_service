@@ -110,6 +110,7 @@ func main() {
 			r.Get("/me", userHandler.GetMe)
 			r.Patch("/me", userHandler.UpdateProfile)
 			r.Post("/me/avatar", userHandler.UploadAvatar)
+			r.Get("/username-check", userHandler.CheckUsername)
 		})
 	})
 

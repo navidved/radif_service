@@ -225,6 +225,43 @@ func generateStorageKey(userID, ext string) (string, error) {
 	return fmt.Sprintf("%s/%x%s", userID, b, ext), nil
 }
 
+// CheckUsername godoc
+//
+//	@Summary		Check username availability
+//	@Description	Returns whether the given username is available (not yet taken). Requires authentication.
+//	@Tags			users
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			username	query		string	true	"Username to check"
+//	@Success		200			{object}	response.Envelope{data=usernameCheckResponse}
+//	@Failure		400			{object}	response.Envelope
+//	@Failure		401			{object}	response.Envelope
+//	@Failure		500			{object}	response.Envelope
+//	@Router			/users/username-check [get]
+func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
+	username := r.URL.Query().Get("username")
+	if username == "" {
+		response.BadRequest(w, "username query parameter is required")
+		return
+	}
+	if !usernameRegex.MatchString(username) {
+		response.BadRequest(w, "username may only contain letters, digits, and underscores")
+		return
+	}
+	if len(username) > 50 {
+		response.BadRequest(w, "username must be 50 characters or fewer")
+		return
+	}
+
+	available, err := h.svc.UsernameAvailable(r.Context(), username)
+	if err != nil {
+		response.InternalError(w)
+		return
+	}
+
+	response.OK(w, usernameCheckResponse{Available: available})
+}
+
 type updateProfileRequest struct {
 	Username *string `json:"username"`
 	FullName *string `json:"fullName"`
@@ -233,4 +270,8 @@ type updateProfileRequest struct {
 
 type avatarUploadResponse struct {
 	AvatarURL string `json:"avatarUrl"`
+}
+
+type usernameCheckResponse struct {
+	Available bool `json:"available"`
 }
