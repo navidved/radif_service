@@ -1,0 +1,3 @@
+ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS business_phone VARCHAR(20),
+    ADD COLUMN IF NOT EXISTS address        TEXT;

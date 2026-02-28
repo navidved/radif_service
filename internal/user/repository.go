@@ -14,14 +14,16 @@ import (
 
 // User represents a registered Radif user.
 type User struct {
-	ID          string  `json:"id"`
-	Phone       string  `json:"phone"`
-	AccountType string  `json:"accountType"`
-	Username    *string `json:"username,omitempty"`
-	FullName    *string `json:"fullName,omitempty"`
-	Bio         *string `json:"bio,omitempty"`
-	AvatarKey   *string `json:"-"`
-	AvatarURL   *string `json:"avatarUrl,omitempty"`
+	ID            string  `json:"id"`
+	Phone         string  `json:"phone"`
+	AccountType   string  `json:"accountType"`
+	Username      *string `json:"username,omitempty"`
+	FullName      *string `json:"fullName,omitempty"`
+	Bio           *string `json:"bio,omitempty"`
+	BusinessPhone *string `json:"businessPhone,omitempty"`
+	Address       *string `json:"address,omitempty"`
+	AvatarKey     *string `json:"-"`
+	AvatarURL     *string `json:"avatarUrl,omitempty"`
 
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
@@ -30,9 +32,11 @@ type User struct {
 // UpdateProfileParams holds the fields that can be updated via PATCH /users/me.
 // Nil pointers mean "leave unchanged".
 type UpdateProfileParams struct {
-	Username *string
-	FullName *string
-	Bio      *string
+	Username      *string
+	FullName      *string
+	Bio           *string
+	BusinessPhone *string
+	Address       *string
 }
 
 // ErrNotFound is returned when a user does not exist.
@@ -58,12 +62,13 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 func scanUser(row pgx.Row, u *User) error {
 	return row.Scan(
 		&u.ID, &u.Phone, &u.AccountType,
-		&u.Username, &u.FullName, &u.Bio, &u.AvatarKey,
+		&u.Username, &u.FullName, &u.Bio,
+		&u.BusinessPhone, &u.Address, &u.AvatarKey,
 		&u.CreatedAt, &u.UpdatedAt,
 	)
 }
 
-const selectCols = `id, phone, account_type, username, full_name, bio, avatar_key, created_at, updated_at`
+const selectCols = `id, phone, account_type, username, full_name, bio, business_phone, address, avatar_key, created_at, updated_at`
 
 // Create inserts a new user and returns the created record.
 func (r *Repository) Create(ctx context.Context, phone, accountType string) (*User, error) {
@@ -118,12 +123,14 @@ func (r *Repository) UpdateProfile(ctx context.Context, id string, p UpdateProfi
 	u := &User{}
 	err := scanUser(r.db.QueryRow(ctx,
 		`UPDATE users SET
-		    username  = COALESCE($2, username),
-		    full_name = COALESCE($3, full_name),
-		    bio       = COALESCE($4, bio)
+		    username       = COALESCE($2, username),
+		    full_name      = COALESCE($3, full_name),
+		    bio            = COALESCE($4, bio),
+		    business_phone = COALESCE($5, business_phone),
+		    address        = COALESCE($6, address)
 		 WHERE id = $1
 		 RETURNING `+selectCols,
-		id, p.Username, p.FullName, p.Bio,
+		id, p.Username, p.FullName, p.Bio, p.BusinessPhone, p.Address,
 	), u)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound

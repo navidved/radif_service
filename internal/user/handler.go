@@ -114,9 +114,11 @@ func (h *Handler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
 	}
 
 	u, err := h.svc.UpdateProfile(r.Context(), userID, UpdateProfileParams{
-		Username: req.Username,
-		FullName: req.FullName,
-		Bio:      req.Bio,
+		Username:      req.Username,
+		FullName:      req.FullName,
+		Bio:           req.Bio,
+		BusinessPhone: req.BusinessPhone,
+		Address:       req.Address,
 	})
 	if err != nil {
 		if h.svc.IsUsernameTaken(err) {
@@ -263,9 +265,11 @@ func (h *Handler) CheckUsername(w http.ResponseWriter, r *http.Request) {
 }
 
 type updateProfileRequest struct {
-	Username *string `json:"username"`
-	FullName *string `json:"fullName"`
-	Bio      *string `json:"bio"`
+	Username      *string `json:"username"`
+	FullName      *string `json:"fullName"`
+	Bio           *string `json:"bio"`
+	BusinessPhone *string `json:"businessPhone"`
+	Address       *string `json:"address"`
 }
 
 type avatarUploadResponse struct {
