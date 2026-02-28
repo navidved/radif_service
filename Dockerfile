@@ -2,6 +2,9 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GONOSUMDB=*
+
 # Cache dependency downloads separately from source
 COPY go.mod go.sum ./
 RUN go mod download && go install github.com/swaggo/swag/cmd/swag@latest

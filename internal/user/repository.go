@@ -14,12 +14,25 @@ import (
 
 // User represents a registered Radif user.
 type User struct {
-	ID          string    `json:"id"`
-	Phone       string    `json:"phone"`
-	AccountType string    `json:"accountType"`
-	FullName    *string   `json:"fullName,omitempty"`
-	CreatedAt   time.Time `json:"createdAt"`
-	UpdatedAt   time.Time `json:"updatedAt"`
+	ID          string  `json:"id"`
+	Phone       string  `json:"phone"`
+	AccountType string  `json:"accountType"`
+	Username    *string `json:"username,omitempty"`
+	FullName    *string `json:"fullName,omitempty"`
+	Bio         *string `json:"bio,omitempty"`
+	AvatarKey   *string `json:"-"`
+	AvatarURL   *string `json:"avatarUrl,omitempty"`
+
+	CreatedAt time.Time `json:"createdAt"`
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// UpdateProfileParams holds the fields that can be updated via PATCH /users/me.
+// Nil pointers mean "leave unchanged".
+type UpdateProfileParams struct {
+	Username *string
+	FullName *string
+	Bio      *string
 }
 
 // ErrNotFound is returned when a user does not exist.
@@ -27,6 +40,9 @@ var ErrNotFound = errors.New("user not found")
 
 // ErrAlreadyExists is returned when a phone number is already registered.
 var ErrAlreadyExists = errors.New("user already exists")
+
+// ErrUsernameTaken is returned when the chosen username is already in use.
+var ErrUsernameTaken = errors.New("username already taken")
 
 // Repository handles all user database operations.
 type Repository struct {
@@ -38,15 +54,26 @@ func NewRepository(db *pgxpool.Pool) *Repository {
 	return &Repository{db: db}
 }
 
+// scanUser scans a full user row into a User value.
+func scanUser(row pgx.Row, u *User) error {
+	return row.Scan(
+		&u.ID, &u.Phone, &u.AccountType,
+		&u.Username, &u.FullName, &u.Bio, &u.AvatarKey,
+		&u.CreatedAt, &u.UpdatedAt,
+	)
+}
+
+const selectCols = `id, phone, account_type, username, full_name, bio, avatar_key, created_at, updated_at`
+
 // Create inserts a new user and returns the created record.
 func (r *Repository) Create(ctx context.Context, phone, accountType string) (*User, error) {
 	u := &User{}
-	err := r.db.QueryRow(ctx,
+	err := scanUser(r.db.QueryRow(ctx,
 		`INSERT INTO users (phone, account_type)
 		 VALUES ($1, $2)
-		 RETURNING id, phone, account_type, full_name, created_at, updated_at`,
+		 RETURNING `+selectCols,
 		phone, accountType,
-	).Scan(&u.ID, &u.Phone, &u.AccountType, &u.FullName, &u.CreatedAt, &u.UpdatedAt)
+	), u)
 	if err != nil {
 		if isUniqueViolation(err) {
 			return nil, ErrAlreadyExists
@@ -59,11 +86,9 @@ func (r *Repository) Create(ctx context.Context, phone, accountType string) (*Us
 // GetByID fetches a user by their UUID.
 func (r *Repository) GetByID(ctx context.Context, id string) (*User, error) {
 	u := &User{}
-	err := r.db.QueryRow(ctx,
-		`SELECT id, phone, account_type, full_name, created_at, updated_at
-		 FROM users WHERE id = $1`,
-		id,
-	).Scan(&u.ID, &u.Phone, &u.AccountType, &u.FullName, &u.CreatedAt, &u.UpdatedAt)
+	err := scanUser(r.db.QueryRow(ctx,
+		`SELECT `+selectCols+` FROM users WHERE id = $1`, id,
+	), u)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
@@ -76,16 +101,54 @@ func (r *Repository) GetByID(ctx context.Context, id string) (*User, error) {
 // GetByPhone fetches a user by their phone number.
 func (r *Repository) GetByPhone(ctx context.Context, phone string) (*User, error) {
 	u := &User{}
-	err := r.db.QueryRow(ctx,
-		`SELECT id, phone, account_type, full_name, created_at, updated_at
-		 FROM users WHERE phone = $1`,
-		phone,
-	).Scan(&u.ID, &u.Phone, &u.AccountType, &u.FullName, &u.CreatedAt, &u.UpdatedAt)
+	err := scanUser(r.db.QueryRow(ctx,
+		`SELECT `+selectCols+` FROM users WHERE phone = $1`, phone,
+	), u)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, ErrNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("get user by phone: %w", err)
+	}
+	return u, nil
+}
+
+// UpdateProfile applies partial profile updates. Nil fields are left unchanged.
+func (r *Repository) UpdateProfile(ctx context.Context, id string, p UpdateProfileParams) (*User, error) {
+	u := &User{}
+	err := scanUser(r.db.QueryRow(ctx,
+		`UPDATE users SET
+		    username  = COALESCE($2, username),
+		    full_name = COALESCE($3, full_name),
+		    bio       = COALESCE($4, bio)
+		 WHERE id = $1
+		 RETURNING `+selectCols,
+		id, p.Username, p.FullName, p.Bio,
+	), u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		if isUniqueViolation(err) {
+			return nil, ErrUsernameTaken
+		}
+		return nil, fmt.Errorf("update profile: %w", err)
+	}
+	return u, nil
+}
+
+// UpdateAvatarKey saves a new avatar object key for the user and returns the updated record.
+func (r *Repository) UpdateAvatarKey(ctx context.Context, id, key string) (*User, error) {
+	u := &User{}
+	err := scanUser(r.db.QueryRow(ctx,
+		`UPDATE users SET avatar_key = $2 WHERE id = $1 RETURNING `+selectCols,
+		id, key,
+	), u)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("update avatar key: %w", err)
 	}
 	return u, nil
 }

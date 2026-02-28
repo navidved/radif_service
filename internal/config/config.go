@@ -14,6 +14,14 @@ type Config struct {
 	JWTSecret   string
 	Port        string
 	AppEnv      string
+
+	// Object storage (S3-compatible: MinIO locally, ArvanCloud in production)
+	StorageEndpoint   string
+	StorageAccessKey  string
+	StorageSecretKey  string
+	StorageBucket     string
+	StorageUseSSL     bool
+	StoragePublicBase string // browser-accessible base URL, e.g. "http://localhost:9000/avatars"
 }
 
 // Load reads configuration from a .env file (if present) and environment variables.
@@ -27,6 +35,13 @@ func Load() *Config {
 		JWTSecret:   getEnv("JWT_SECRET", "change_me_in_production"),
 		Port:        getEnv("PORT", "8080"),
 		AppEnv:      getEnv("APP_ENV", "development"),
+
+		StorageEndpoint:   getEnv("STORAGE_ENDPOINT", "localhost:9000"),
+		StorageAccessKey:  getEnv("STORAGE_ACCESS_KEY", "minioadmin"),
+		StorageSecretKey:  getEnv("STORAGE_SECRET_KEY", "minioadmin"),
+		StorageBucket:     getEnv("STORAGE_BUCKET", "avatars"),
+		StorageUseSSL:     getEnv("STORAGE_USE_SSL", "false") == "true",
+		StoragePublicBase: getEnv("STORAGE_PUBLIC_BASE", "http://localhost:9000/avatars"),
 	}
 }
 

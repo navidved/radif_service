@@ -30,6 +30,7 @@ import (
 	"github.com/radif/service/internal/config"
 	"github.com/radif/service/internal/db"
 	appMiddleware "github.com/radif/service/internal/middleware"
+	"github.com/radif/service/internal/storage"
 	"github.com/radif/service/internal/user"
 
 	_ "github.com/radif/service/docs/swagger"
@@ -48,10 +49,22 @@ func main() {
 		log.Fatalf("database migration failed: %v", err)
 	}
 
+	store, err := storage.NewMinioStorage(
+		cfg.StorageEndpoint,
+		cfg.StorageAccessKey,
+		cfg.StorageSecretKey,
+		cfg.StorageBucket,
+		cfg.StoragePublicBase,
+		cfg.StorageUseSSL,
+	)
+	if err != nil {
+		log.Fatalf("object storage init failed: %v", err)
+	}
+
 	// Wire dependencies: repository → service → handler
 	userRepo := user.NewRepository(pool)
 	userSvc := user.NewService(userRepo)
-	userHandler := user.NewHandler(userSvc)
+	userHandler := user.NewHandler(userSvc, store)
 
 	authRepo := auth.NewRepository(pool)
 	authSvc := auth.NewService(authRepo, userSvc, cfg)
@@ -95,6 +108,8 @@ func main() {
 		r.Route("/users", func(r chi.Router) {
 			r.Use(appMiddleware.RequireAuth(cfg.JWTSecret))
 			r.Get("/me", userHandler.GetMe)
+			r.Patch("/me", userHandler.UpdateProfile)
+			r.Post("/me/avatar", userHandler.UploadAvatar)
 		})
 	})
 

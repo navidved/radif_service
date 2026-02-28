@@ -35,7 +35,30 @@ func (s *Service) GetByPhone(ctx context.Context, phone string) (*User, error) {
 	return s.repo.GetByPhone(ctx, phone)
 }
 
+// UpdateProfile applies partial updates to a user's profile.
+func (s *Service) UpdateProfile(ctx context.Context, id string, p UpdateProfileParams) (*User, error) {
+	u, err := s.repo.UpdateProfile(ctx, id, p)
+	if err != nil {
+		return nil, fmt.Errorf("update profile: %w", err)
+	}
+	return u, nil
+}
+
+// UpdateAvatarKey saves a new avatar object storage key for the user.
+func (s *Service) UpdateAvatarKey(ctx context.Context, id, key string) (*User, error) {
+	u, err := s.repo.UpdateAvatarKey(ctx, id, key)
+	if err != nil {
+		return nil, fmt.Errorf("update avatar key: %w", err)
+	}
+	return u, nil
+}
+
 // IsNotFound returns true when the error indicates a user was not found.
 func (s *Service) IsNotFound(err error) bool {
 	return errors.Is(err, ErrNotFound)
+}
+
+// IsUsernameTaken returns true when the error indicates a username conflict.
+func (s *Service) IsUsernameTaken(err error) bool {
+	return errors.Is(err, ErrUsernameTaken)
 }
